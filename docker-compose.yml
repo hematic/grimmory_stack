@@ -1,0 +1,60 @@
+services:
+  grimmory:
+    image: ghcr.io/grimmory-tools/grimmory:latest
+    container_name: grimmory
+    restart: unless-stopped
+    networks:
+      - ${NETWORK}
+    depends_on:
+      grimmory-db:
+        condition: service_healthy
+    volumes:
+      - grimmory-data:/app/data
+      - ${BOOKS}:/books
+      - ${BOOKDROP}:/bookdrop
+    environment:
+      - USER_ID=${PUID}
+      - GROUP_ID=${PGID}
+      - TZ=${TZ}
+      - DATABASE_URL=jdbc:mariadb://grimmory-db:3306/grimmory
+      - DATABASE_USERNAME=${DB_USER}
+      - DATABASE_PASSWORD=${DB_PASSWORD}
+    ports:
+      - 6060:6060
+    healthcheck:
+      # upstream image ships wget, not curl
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:6060/api/v1/healthcheck"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  grimmory-db:
+    image: lscr.io/linuxserver/mariadb:11.4.5
+    container_name: grimmory-db
+    restart: unless-stopped
+    networks:
+      - ${NETWORK}
+    volumes:
+      - grimmory-db:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=grimmory
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  grimmory-data:
+  grimmory-db:

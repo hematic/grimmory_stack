@@ -1,0 +1,3 @@
+# Host-specific / secret env — supplied at deploy time (Komodo)
+stack.env
+.env
